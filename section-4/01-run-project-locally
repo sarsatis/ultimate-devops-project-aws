@@ -5,3 +5,21 @@ In this lecture we will use the `docker compose` which is installed as part of `
 Just go to the directory of cloned repo and run `docker compose up`.
 
 Video of the lecture is self explanatory.
+
+```bash
+1. git clone https://github.com/iam-veeramalla/ultimate-devops-project-demo.git
+
+2. df -h --> to check space on file system
+
+3. go and change the volume to 30GB instead of 8
+
+4. run lsblk (Check root project storage it might have not been still updated)
+
+5. sudo apt install cloud-guest-utils 
+
+6. sudo growpart /dev/xvda 1 --> just updates the file storage
+
+7. run df -h again you will see file system is still not updated
+
+8. sudo resize2fs /dev/xvda1
+```

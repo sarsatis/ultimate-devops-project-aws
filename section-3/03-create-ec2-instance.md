@@ -51,7 +51,11 @@ Amazon EC2 (Elastic Compute Cloud) provides resizable compute capacity in the cl
 #### **For Linux Instances:**
 - Use SSH from terminal:
   ```bash
+  for amazon linux instance
   ssh -i /path/to/your-key.pem ec2-user@your-instance-public-ip
+  
+  for ubuntu instance
+  ssh -i /path/to/your-key.pem ubuntu@your-instance-public-ip  
   ```
 
 ---
