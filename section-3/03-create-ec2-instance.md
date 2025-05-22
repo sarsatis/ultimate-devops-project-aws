@@ -5,6 +5,7 @@ Amazon EC2 (Elastic Compute Cloud) provides resizable compute capacity in the cl
 
 ---
 
+
 ## **Step-by-Step EC2 Instance Setup**
 
 ### **Step 1: Log in to AWS Console**
