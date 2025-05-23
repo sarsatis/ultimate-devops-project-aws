@@ -60,3 +60,8 @@ This stage creates a **lightweight, optimized runtime image** for running the ap
 - The **first stage** builds the application using Gradle.  
 - The **second stage** runs the built application inside a **lightweight JRE-based image**.  
 - Using **multi-stage builds** ensures that the final image only contains what is necessary for execution, making it **smaller, more secure, and optimized** for production use.  
+
+### Dockerfile
+```
+
+```

@@ -54,3 +54,37 @@ This stage creates a **minimal runtime environment** for running the compiled Go
 - The **first stage** compiles the Go microservice efficiently with caching mechanisms.  
 - The **second stage** runs the built application in a **lightweight, production-ready environment**.  
 - Using **multi-stage builds** ensures that the final image contains only what is needed, making it **small, secure, and optimized** for production.  
+
+### Dockerfile
+```
+FROM golang:1.22-alpine AS builder
+
+WORKDIR /usr/src/app/
+
+COPY . .
+
+# Download
+RUN go mod download
+
+RUN go build -o product-catalog .
+
+####################################
+
+FROM alpine AS release
+
+WORKDIR /usr/src/app/
+
+COPY ./products/ ./products/
+COPY --from=builder /usr/src/app/product-catalog/ ./
+
+ENV PRODUCT_CATALOG_PORT 8088
+ENTRYPOINT [ "./product-catalog" ]
+
+```
+
+
+```
+docker build -t sarsatis/product-catalog:v1 . 
+
+docker run sarsatis/product-catalog:v1
+```
