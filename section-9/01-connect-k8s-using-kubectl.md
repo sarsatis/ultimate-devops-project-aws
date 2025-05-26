@@ -1,5 +1,8 @@
 # Connect to EKS Cluster using AWS CLI and kubectl
 
+```
+sudo apt install unzip -y
+```
 ## Step 1: Download and Install AWS CLI
 
 Follow the instructions to download and install the AWS CLI from the [official AWS documentation](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html).

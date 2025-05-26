@@ -61,7 +61,42 @@ This stage creates a **lightweight, optimized runtime image** for running the ap
 - The **second stage** runs the built application inside a **lightweight JRE-based image**.  
 - Using **multi-stage builds** ensures that the final image only contains what is necessary for execution, making it **smaller, more secure, and optimized** for production use.  
 
+
+### Steps
+Explain pull ps exec logs write all docker commands show port and copy login with multiple repos different url
+
+registry/username/microservicename:tag
+```
+sudo apt install openjdk-21-jre-headless
+```
 ### Dockerfile
 ```
+FROM eclipse-temurin:21-jdk AS builder
+
+WORKDIR /usr/src/app/
+
+COPY gradlew* settings.gradle* build.gradle .
+COPY ./gradle ./gradle
+
+RUN chmod +x ./gradlew
+RUN ./gradlew
+RUN ./gradlew downloadRepos
+
+COPY . .
+COPY ./pb ./proto
+RUN chmod +x ./gradlew
+RUN ./gradlew installDist -PprotoSourceDir=./proto
+
+#####################################################
+
+FROM eclipse-temurin:21-jre
+
+WORKDIR /usr/src/app/
+
+COPY --from=builder /usr/src/app/ ./
+
+ENV AD_PORT 9099
+
+ENTRYPOINT ["./build/install/opentelemetry-demo-ad/bin/Ad"]
 
 ```

@@ -40,3 +40,23 @@ This stage is responsible for **setting up the environment and installing depend
 - The **Dockerfile** sets up a **lightweight Python environment** with all necessary dependencies.  
 - The **OpenTelemetry auto-instrumentation** is installed for monitoring.  
 - The final image runs the **Python microservice efficiently** with minimal overhead.   
+
+### Dockerfile
+```
+FROM python:3.12-slim-bookworm AS base
+
+WORKDIR /usr/src/app
+
+COPY requirements.txt ./
+
+RUN pip install --upgrade pip
+RUN pip install -r requirements.txt
+
+COPY . .
+
+RUN opentelemetry-bootstrap -a install 
+
+ENV RECOMMENDATION_PORT 1010
+
+ENTRYPOINT ["python", "recommendation_server.py"]
+```

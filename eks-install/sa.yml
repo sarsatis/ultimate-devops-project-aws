@@ -1,0 +1,175 @@
+spec:
+  inputs:
+    stage:
+      description: "The pipeline stage where to add semver-versioning job"
+---
+include:
+  - project: "partners/alliance-car/devops/catalog/workflow"
+    ref: "v1.1.0"
+    file:
+      - "/ci/rules.gitlab-ci.yml"
+      - "/ci/runners.gitlab-ci.yml"
+  - local: "/ci/images.yml"
+
+.version-runner:
+  image: artifactory.tls.renault.fr/docker/partners/alliance-car/devops/docker/build-version:20.04
+  tags: [kube, rswl]
+
+################################################################################
+# Version template
+################################################################################
+.version:
+  stage: deploy
+  extends: [.version-runner]
+  needs: []
+  cache: {}
+  interruptible: false
+  script:
+    - |
+      RELEASE_BRANCH="release"
+      
+      [[ $CI_COMMIT_BRANCH == stable-* ]] && \
+        RELEASE_BRANCH="release${CI_COMMIT_BRANCH#stable}"
+ 
+    - |
+          if [[ ! -z $(git ls-remote --heads origin refs/heads/$RELEASE_BRANCH) ]]; then
+            git fetch origin $RELEASE_BRANCH --depth=1
+            if [[ -z $(git branch --contains FETCH_HEAD) ]]; then
+              RELEASE_COMMIT_DATE=$(git show --no-patch --format=%ci FETCH_HEAD)
+              echo "Need to fetch release, fetching since $RELEASE_COMMIT_DATE"
+              git fetch origin --shallow-since="$RELEASE_COMMIT_DATE"
+            fi
+          fi
+    
+    # Run version bump first
+    - standard-version
+
+    # Extract new version from package.json
+    - VERSION=$(node -p "require('./package.json').version")
+    # - VERSION_BRANCH="release/v$VERSION"
+    - VERSION_BRANCH="feat/to_protected_branch-v$VERSION"  
+    - echo "🔧 Creating version branch: $VERSION_BRANCH"
+ 
+    # Create and switch to new branch
+    - git checkout -b "$VERSION_BRANCH"
+ 
+    # Push the commit and tag
+    - git push -v "$CI_PROJECT_URL" HEAD:refs/heads/$VERSION_BRANCH
+    - git push -v --follow-tags "$CI_PROJECT_URL" HEAD:refs/heads/$VERSION_BRANCH
+
+# Auto-create Merge Request using GitLab built-in token
+    - TARGET_BRANCH="$CI_COMMIT_BRANCH"
+    - TITLE="chore(release): version bump to v$VERSION"
+    - DESCRIPTION="Automated version bump and changelog for \`$VERSION\` via standard-version"
+ 
+    - |
+      curl --silent --fail --show-error --request POST "$CI_API_V4_URL/projects/$CI_PROJECT_ID/merge_requests" \
+        --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+        --header "Content-Type: application/json" \
+        --data "{
+          \"source_branch\": \"$VERSION_BRANCH\",
+            \"target_branch\": \"$RELEASE_BRANCH\",
+            \"title\": \"$TITLE\",
+            \"description\": \"$DESCRIPTION\",
+            \"remove_source_branch\": false
+          }"
+    - echo "Version bumped and pushed to $VERSION_BRANCH"
+    - echo "Merge request created to $RELEASE_BRANCH"
+
+    - |
+      curl --silent --fail --show-error --request POST "$CI_API_V4_URL/projects/$CI_PROJECT_ID/merge_requests" \
+        --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+        --header "Content-Type: application/json" \
+        --data "{
+          \"source_branch\": \"$VERSION_BRANCH\",
+          \"target_branch\": \"$RELEASE_BRANCH\",
+          \"title\": \"$TITLE\",
+          \"description\": \"$DESCRIPTION\",
+          \"remove_source_branch\": false
+        }"
+    
+    - echo "Version bumped and pushed to $VERSION_BRANCH"
+    - echo "Merge request created to $RELEASE_BRANCH"
+
+################################################################################
+# SemVer version
+################################################################################
+version:
+  extends:
+    - .version
+    - .on-merge-rules
+    - .version-runner
+    - .image-build-version
+  rules:
+    # Skip for release commits
+    - !reference [.skip-release-commits, rules]
+    # Auto semver on main branch
+    - if: $CI_WORKFLOW_FLAG_MAIN && $AUTO_RELEASE
+      variables:
+        OPTIONS: ''
+    # Manual semver on main branch
+    - if: $CI_WORKFLOW_FLAG_MAIN
+      when: manual
+      variables:
+        OPTIONS: ''
+    # Auto patch on stable branch
+    - if: $CI_WORKFLOW_FLAG_STABLE && $AUTO_RELEASE
+      variables:
+        OPTIONS: '--release-as patch'
+    # Manual patch on stable branch
+    - if: $CI_WORKFLOW_FLAG_STABLE
+      when: manual
+      variables:
+        OPTIONS: '--release-as patch'
+    
+
+################################################################################
+# Major version
+################################################################################
+major:
+  extends:
+    - .version
+    - .on-merge-rules
+    - .version-runner
+    - .image-build-version
+  rules:
+    - if: $CI_WORKFLOW_FLAG_WEB && $CI_WORKFLOW_FLAG_MAIN
+      when: manual
+  variables:
+    OPTIONS: '--release-as major'
+ 
+################################################################################
+
+################################################################################
+# Minor version
+################################################################################
+minor:
+  extends:
+    - .version
+    - .on-merge-rules
+    - .version-runner
+    - .image-build-version
+  rules:
+    # manual pipeline
+    - if: $CI_WORKFLOW_FLAG_WEB && $CI_WORKFLOW_FLAG_MAIN
+      when: manual
+  variables:
+    OPTIONS: '--release-as minor'
+ 
+#############################################################
+# Patch version
+################################################################################
+patch:
+  extends:
+    - .version
+    - .on-merge-rules
+    - .version-runner
+    - .image-build-version
+  rules:
+    # manual pipeline
+    - if: $CI_WORKFLOW_FLAG_WEB && $CI_WORKFLOW_FLAG_MAIN
+      when: manual
+    - if: $CI_WORKFLOW_FLAG_WEB && $CI_WORKFLOW_FLAG_STABLE
+      when: manual
+  variables:
+      OPTIONS: '--release-as patch'
