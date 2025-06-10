@@ -37,7 +37,7 @@ resource "aws_instance" "kubectl_instance" {
 
     echo "Updating packages..."
     apt-get update -y
-    apt-get install -y curl
+    apt-get install -y unzip curl ca-certificates gnupg software-properties-common
 
     echo "Installing latest stable version of kubectl..."
     curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
@@ -46,13 +46,56 @@ resource "aws_instance" "kubectl_instance" {
 
     echo "kubectl version installed:"
     kubectl version --client || true
+
+
+    sudo install -m 0755 -d /etc/apt/keyrings
+    sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+
+    sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+      $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+    sudo apt-get update -y
+
+    echo "Installing Docker..."
+
+    sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+    echo "Docker version installed:"
+    docker --version || true
+    echo "Installation complete. kubectl and Docker are ready to use."
+
+    sudo usermod -aG docker ubuntu
+
+    wget -O- https://apt.releases.hashicorp.com/gpg | \
+    gpg --dearmor | \
+    sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
+
+    echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] \
+    https://apt.releases.hashicorp.com $(lsb_release -cs) main" | \
+    sudo tee /etc/apt/sources.list.d/hashicorp.list
+
+    sudo apt-get update -y
+
+    sudo apt-get install -y terraform
+
+    sudo apt install -y golang-go
+    sudo apt install -y openjdk-21-jre-headless
+
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+
+    unzip awscliv2.zip
+    sudo ./aws/install --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli --update
+
+    
+    git clone https://github.com/iam-veeramalla/ultimate-devops-project-demo || echo "Git clone failed."
+
+
   EOF
 
   tags = {
-    Name = "Ubuntu22-Kubectl-Only",
-    Installed = "kubectl",
-    Study = "DevOps",
-    Sa = "Terraform",
+    Name = "devops-instance"
   }
 }
 
