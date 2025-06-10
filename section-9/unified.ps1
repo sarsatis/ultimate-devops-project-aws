@@ -36,6 +36,7 @@ foreach ($baseline in $baselines) {
     $allCsvLines += $csvHeader
 
     $baselineTotalVms = 0
+    $baselineTotalRows = 0
 
     # -------------------- Subscription Loop --------------------
     foreach ($sub in $subscriptions) {
@@ -104,11 +105,17 @@ guestconfigurationresources
         } while ($pagedResults.Count -eq $batchSize)
 
         if ($allResults.Count -gt 0) {
-            Write-Host "[$baseline] - $subName ($subId): $($allResults.Count) rows" -ForegroundColor Cyan
-            $baselineTotalVms += $allResults.Count
+            $rowCount = $allResults.Count
+            $uniqueVmCount = ($allResults | Select-Object -ExpandProperty host_name -Unique).Count
+
+            Write-Host "[$baseline] - $subName ($subId): $uniqueVmCount unique VMs, $rowCount rows" -ForegroundColor Cyan
+
+            $baselineTotalVms += $uniqueVmCount
+            $baselineTotalRows += $rowCount
 
             foreach ($r in $allResults) {
-                $line = "$($r.bunit),$($r.subscription),$($r.report_id),$($r.Date),$($r.host_name),$($r.region),$($r.environment),$($r.platform),$($r.status),$($r.cis_id),$($r.id),$($r.message -replace '\r?\n', ' ')"
+                $cleanMessage = $r.message -replace '\r?\n', ' ' -replace '"', '""'
+                $line = "$($r.bunit),$($r.subscription),$($r.report_id),$($r.Date),$($r.host_name),$($r.region),$($r.environment),$($r.platform),$($r.status),$($r.cis_id),$($r.id),$cleanMessage"
                 $allCsvLines += $line
             }
         }
@@ -122,8 +129,9 @@ guestconfigurationresources
     Write-Host "Exporting to JSON: $jsonFilePath" -ForegroundColor Yellow
     Import-Csv -Path $csvFilePath | ConvertTo-Json -Depth 10 | Set-Content -Path $jsonFilePath -Encoding UTF8
 
-    # Print summary
-    Write-Host "Total VMs for baseline [$baseline]: $baselineTotalVms" -ForegroundColor Green
+    # Print baseline summary
+    Write-Host "Total unique VMs for baseline [$baseline]: $baselineTotalVms" -ForegroundColor Green
+    Write-Host "Total rows for baseline [$baseline]: $baselineTotalRows" -ForegroundColor Green
 }
 
 # -------------------- End Timer --------------------
